@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QLineEdit, QPushButton, QFileDialog, QListWidget,
     QTabWidget, QMessageBox, QProgressDialog, QFrame, QSplitter,
-    QGroupBox, QScrollArea
+    QGroupBox, QScrollArea, QComboBox
 )
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QMutex, pyqtSlot
 from PyQt5.QtGui import QPixmap, QImage, QFont, QPalette, QColor
@@ -390,16 +390,29 @@ class FaceRecognitionApp(QMainWindow):
         left_layout = QVBoxLayout()
         
         # Camera controls
+# Camera controls
         camera_controls = QHBoxLayout()
+
+# Camera selection dropdown
+        self.camera_selector = QComboBox()
+        self.available_cameras = self.get_available_cameras()
+        for idx in self.available_cameras:
+            self.camera_selector.addItem(f"Camera {idx}", idx)
+
+        camera_controls.addWidget(QLabel("Select Camera:"))
+        camera_controls.addWidget(self.camera_selector)
+
+# Start camera button
         self.start_camera_btn = QPushButton("Start Camera")
         self.start_camera_btn.clicked.connect(self.toggle_camera)
-        
+        camera_controls.addWidget(self.start_camera_btn)
+
+# Start recognition button
         self.recognition_btn = QPushButton("Start Recognition")
         self.recognition_btn.clicked.connect(self.toggle_recognition)
         self.recognition_btn.setEnabled(False)
-        
-        camera_controls.addWidget(self.start_camera_btn)
         camera_controls.addWidget(self.recognition_btn)
+
         camera_controls.addStretch()
         
         # Camera display
@@ -573,6 +586,10 @@ class FaceRecognitionApp(QMainWindow):
     def toggle_camera(self):
         """Toggle camera on/off"""
         if not self.camera_thread.running:
+            # Get the selected camera index from the dropdown
+            selected_index = self.camera_selector.currentData()
+            self.camera_thread.camera_index = selected_index
+
             self.camera_thread.start_capture()
             self.start_camera_btn.setText("Stop Camera")
             self.recognition_btn.setEnabled(True)
@@ -687,6 +704,16 @@ class FaceRecognitionApp(QMainWindow):
             self.refresh_face_list()
             self.load_known_faces()
             QMessageBox.information(self, "Success", f"{person_name} has been deleted")
+
+
+    def get_available_cameras(self, max_cameras=5):
+        available = []
+        for i in range(max_cameras):
+            cap = cv2.VideoCapture(i)
+            if cap is not None and cap.isOpened():
+                available.append(i)
+                cap.release()
+        return available
     
     def closeEvent(self, event):
         """Handle application closing"""
